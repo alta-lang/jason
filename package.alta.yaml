@@ -1,0 +1,6 @@
+name: jason
+version: 1.0.0
+targets:
+  - name: jason
+    main: bin/jason.alta
+    type: exe

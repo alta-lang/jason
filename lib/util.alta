@@ -1,0 +1,63 @@
+import String from "string"
+import Size from "types"
+
+export function escapeString(string: String): String {
+  let result = new String
+
+  for i: Size in 0..string.length {
+    let char = string.charAt(i)
+    if char == '\b' {
+      result.append("\\b")
+    } else if char == '\f' {
+      result.append("\\f")
+    } else if char == '\n' {
+      result.append("\\n")
+    } else if char == '\r' {
+      result.append("\\r")
+    } else if char == '\t' {
+      result.append("\\t")
+    } else if char == '"' {
+      result.append("\\\"")
+    } else if char == '\\' {
+      result.append("\\\\")
+    } else {
+      result.append(char)
+    }
+  }
+
+  return result
+}
+
+export function unescapeString(string: String): String {
+  let result = new String
+
+  for i: Size in 0..string.length {
+    if string.charAt(i) == '\\' {
+      if i + 1 >= string.length {
+        # malformed string
+        # TODO: throw an error
+        return result
+      }
+      ++i
+      let char = string.charAt(i)
+      if char == 'b' {
+        result.append('\b')
+      } else if char == 'f' {
+        result.append('\f')
+      } else if char == 'n' {
+        result.append('\n')
+      } else if char == 'r' {
+        result.append('\r')
+      } else if char == 't' {
+        result.append('\t')
+      } else {
+        # this includes " and \, so separate checks aren't necessary
+        result.append(char)
+      }
+    } else {
+      result.append(string.charAt(i))
+    }
+  }
+
+  return result
+}

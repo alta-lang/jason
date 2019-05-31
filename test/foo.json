@@ -1,0 +1,17 @@
+{
+  "foo": "bar",
+  "uno": "dos\" \" \n\\\\",
+  "hi": 8.163,
+  "hola": {
+    "cola": 3
+  },
+  "nananananana": [
+    "batman",
+    8,
+    {
+      "hi": "cool",
+      "nice": null
+    },
+    true
+  ]
+}

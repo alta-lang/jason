@@ -1,0 +1,353 @@
+import "classes.alta" as jason
+import malloc, free from "memory"
+import Size, rawstring from "types"
+import String, rawstringLength from "string"
+import Stack from "stack"
+import Pair, parseFloatingPoint from "util"
+import isspace from "libc/lib/ctype"
+import unescapeString from "util.alta"
+
+function expect(seq: String, string: ref String, idx: ref int): bool {
+  let cache: int = idx
+  while idx < string.length && isspace(string.charAt(idx)) {
+    ++idx
+  }
+  if idx >= string.length {
+    idx = cache
+    return false
+  }
+
+  for i: Size in 0..seq.length {
+    if string.charAt(idx) == seq.charAt(i) {
+      ++idx
+      return true
+    }
+  }
+  idx = cache
+  return false
+}
+
+function expectString(string: ref String, idx: ref int): String {
+  if !expect(new String("\""), string, idx) return new String
+
+  let result = new String("\"")
+  let cache: int = idx
+  let skip = false
+
+  while skip || string.charAt(idx) != '"' {
+    if !skip && string.charAt(idx) == '\\' {
+      skip = true
+    } else if skip {
+      skip = false
+    }
+    result.append(&string.charAt(idx), 1)
+    ;++idx
+  }
+
+  result.append("\"")
+  if !expect(new String("\""), string, idx) {
+    idx = cache
+    return new String
+  }
+  return result
+}
+
+function expectKeyword(keyword: String, string: ref String, idx: ref int): bool {
+  let cache: int = idx
+  for i: Size in 0..keyword.length {
+    if !expect(new String(&keyword.charAt(i), 1), string, idx) {
+      idx = cache
+      return false
+    }
+  }
+  return true
+}
+
+function expectNumber(string: ref String, idx: ref int, found: ref bool): double {
+  let cache: int = idx
+
+  let sequence = new String("0123456789.")
+  if !expect(sequence, string, idx) {
+    found = false
+    return 0.0
+  }
+
+  sequence.append("eE")
+
+  let numberPart = new String
+
+  numberPart.append(&string.charAt(idx - 1) as rawstring, 1)
+  while expect(sequence, string, idx) {
+    numberPart.append(&string.charAt(idx - 1) as rawstring, 1)
+  }
+
+  let last = numberPart.charAt(numberPart.length - 1)
+
+  if !(last >= '0' && last <= '9') {
+    idx = cache
+    found = false
+    return 0.0
+  }
+
+  found = true
+  return parseFloatingPoint<double>(numberPart)
+}
+
+class StackElement {
+  public var index: int = 0
+  public var rule: int = 0
+  public var state: int = 0
+  public var ok: bool = true
+  public var result: ptr jason.Jason = 0 as ptr jason.Jason
+  public var lastResult: ptr jason.Jason = 0 as ptr jason.Jason
+  public var lastOk: bool = false
+  public var stringCache: String
+
+  public constructor() {}
+  public constructor(index: int, rule: int, result: ptr jason.Jason) {
+    this.index = index
+    this.rule = rule
+    this.result = result
+  }
+  public constructor(index: int, rule: int) {
+    this.index = index
+    this.rule = rule
+  }
+}
+
+export function parse(string: String): ptr jason.Jason {
+  let finalResult = &(new* jason.Null as ref jason.Jason)
+  let stack = new Stack<StackElement>
+  stack.push(new StackElement(0, 0, finalResult))
+
+  while stack.length > 0 {
+    let len = stack.length
+    # omg what a mess
+    let rule: ref int = stack.top.rule
+    let idx: ref int = stack.top.index
+    let state: ref int = stack.top.state
+    let ok: ref bool = stack.top.ok
+    let result: ref ptr jason.Jason = stack.top.result
+    let lastResult: ref ptr jason.Jason = stack.top.lastResult
+    let lastOk: bool = stack.top.lastOk
+    let cache: int = idx
+
+    if rule == 0 {
+      if state == 0 {
+        state = 1
+        stack.push(new StackElement(idx, 1))
+      } else if state == 1 {
+        if lastOk {
+          ok = true
+          result = lastResult
+        } else {
+          state = 2
+          stack.push(new StackElement(idx, 2))
+        }
+      } else {
+        if lastOk {
+          ok = true
+          result = lastResult
+        } else {
+          ok = false
+        }
+      }
+    } else if rule == 1 {
+      if state == 0 {
+        if expect(new String("{"), string, idx) {
+          state = 1
+          result = &(new* jason.Object as ref jason.Jason)
+          stack.push(new StackElement(idx, -1))
+        } else {
+          ok = false
+        }
+      } else if state == 1 {
+        let key = expectString(string, idx)
+        if key.length == 0 {
+          ok = false
+        } else if !expect(new String(":"), string, idx) {
+          ok = false
+        } else {
+          stack.top.stringCache = unescapeString(key.substring(1, length: key.length - 2))
+          state = 2
+          stack.push(new StackElement(idx, 3))
+        }
+      } else if state == 2 {
+        if lastOk {
+          ok = true
+          let obj = result as ptr jason.Object
+          obj.get(stack.top.stringCache) = lastResult
+
+          if expect(new String(","), string, idx) {
+            state = 1
+          } else {
+            state = 3
+          }
+        } else {
+          state = 3
+        }
+        stack.push(new StackElement(idx, -1))
+      } else if state == 3 {
+        if !expect(new String("}"), string, idx) {
+          ok = false
+        } else {
+          ok = true
+        }
+      }
+    } else if rule == -1 {
+      ok = false
+    } else if rule == 3 {
+      if state == 0 {
+        state = 1
+        # object
+        stack.push(new StackElement(idx, 1))
+      } else if state == 1 {
+        if lastOk {
+          ok = true
+          result = lastResult
+        } else {
+          state = 2
+          # array
+          stack.push(new StackElement(idx, 2))
+        }
+      } else if state == 2 {
+        if lastOk {
+          ok = true
+          result = lastResult
+        } else {
+          state = 3
+          # string
+          stack.push(new StackElement(idx, 4))
+        }
+      } else if state == 3 {
+        if lastOk {
+          ok = true
+          result = lastResult
+        } else {
+          state = 4
+          # number
+          stack.push(new StackElement(idx, 5))
+        }
+      } else if state == 4 {
+        if lastOk {
+          ok = true
+          result = lastResult
+        } else {
+          state = 5
+          # boolean
+          stack.push(new StackElement(idx, 6))
+        }
+      } else if state == 5 {
+        if lastOk {
+          ok = true
+          result = lastResult
+        } else {
+          state = 6
+          # null
+          stack.push(new StackElement(idx, 7))
+        }
+      } else if state == 6 {
+        if lastOk {
+          ok = true
+          result = lastResult
+        } else {
+          ok = false
+        }
+      }
+    } else if rule == 4 {
+      let str = expectString(string, idx)
+      if str.length == 0 {
+        ok = false
+      } else {
+        ok = true
+        let string = new* jason.String
+        string.append(unescapeString(str.substring(1, length: str.length - 2)))
+        result = &(string as ref jason.Jason)
+      }
+    } else if rule == 5 {
+      let found = false
+      let num = expectNumber(string, idx, found)
+      if found {
+        ok = true
+        result = &(new* jason.Number(num) as ref jason.Jason)
+      } else {
+        ok = false
+      }
+    } else if rule == 6 {
+      let val = false
+      if expectKeyword(new String("true"), string, idx) {
+        ok = true
+        val = true
+      } else if expectKeyword(new String("false"), string, idx) {
+        ok = true
+        val = false
+      } else {
+        ok = false
+      }
+      if ok {
+        result = &(new* jason.Boolean(val) as ref jason.Jason)
+      }
+    } else if rule == 7 {
+      if expectKeyword(new String("null"), string, idx) {
+        ok = true
+        result = &(new* jason.Null as ref jason.Jason)
+      } else {
+        ok = false
+      }
+    } else if rule == 2 {
+      if state == 0 {
+        if expect(new String("["), string, idx) {
+          state = 1
+          result = &(new* jason.Array as ref jason.Jason)
+          stack.push(new StackElement(idx, 3))
+        } else {
+          ok = false
+        }
+      } else if state == 1 {
+        let arr = result as ptr jason.Array
+        if lastOk {
+          ok = true
+          arr.push(lastResult)
+
+          if expect(new String(","), string, idx) {
+            stack.push(new StackElement(idx, 3))
+          } else {
+            state = 2
+            stack.push(new StackElement(idx, -1))
+          }
+        } else {
+          if arr.length > 0 {
+            ok = false
+          } else {
+            state = 2
+            stack.push(new StackElement(idx, -1))
+          }
+        }
+      } else if state == 2 {
+        if expect(new String("]"), string, idx) {
+          ok = true
+        } else {
+          ok = false
+        }
+      }
+    } else {
+      ok = false
+    }
+
+    if !ok {
+      idx = cache
+    }
+    if stack.length <= len {
+      let popped = stack.pop()
+      if stack.length > 0 {
+        stack.top.lastResult = popped.result
+        stack.top.lastOk = popped.ok
+        stack.top.index = popped.index
+      } else {
+        finalResult = popped.result
+      }
+    }
+  }
+
+  return finalResult
+}

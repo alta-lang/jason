@@ -1,0 +1,43 @@
+import parse, stringify from "../main.alta"
+import String from "string"
+import Size, rawstring from "types"
+import printf from "io"
+import {
+  fopen,
+  fgetc,
+  fclose,
+  fprintf,
+  stderr,
+  EOF,
+} from "libc/lib/stdio"
+import escapeString from "../lib/util.alta"
+
+literal function main(argc: int, argv: ptr rawstring): int {
+  let input = new String
+
+  if argc > 1 {
+    let filename = argv[1]
+    let file = fopen(filename, "r")
+    if !file {
+      fprintf(stderr, "failed to open input file")
+      return 1
+    }
+
+    let char = EOF
+    while (char = fgetc(file)) != EOF {
+      input.append(&char as rawstring, 1)
+    }
+
+    fclose(file)
+  } else {
+    input = new String("{ \"foo\": \"bar\" }")
+  }
+
+  let result = parse(input)
+  printf("parsed!\n")
+
+  let asString = stringify(result)
+  printf("%s\n", asString.data)
+
+  return 0
+}
