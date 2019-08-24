@@ -67,6 +67,10 @@ export class Object extends Jason {
   public function getKeys(): Vector<AltaString> {
     return this.keys
   }
+
+  public this[AltaString]: ref ptr Jason {
+    return this.get($)
+  }
 }
 
 export class Number extends Jason {
@@ -75,9 +79,13 @@ export class Number extends Jason {
   public constructor() {
     super()
   }
-  public constructor(value: double) {
+  public @from constructor(value: double) {
     super()
     this.value = value
+  }
+
+  public to double {
+    return this.value
   }
 }
 
@@ -87,9 +95,13 @@ export class Boolean extends Jason {
   public constructor() {
     super()
   }
-  public constructor(value: bool) {
+  public @from constructor(value: bool) {
     super()
     this.value = value
+  }
+
+  public to bool {
+    return this.value
   }
 }
 

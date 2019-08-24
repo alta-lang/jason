@@ -8,22 +8,22 @@ export function stringify(item: ptr jason.Jason): String {
   let result = new String
   let json: ref jason.Jason = *item
   if json instanceof jason.Null {
-    result.append("null")
+    result += "null"
   } else if json instanceof jason.Array {
-    result.append("[")
+    result += "["
     let arr = json as ref jason.Array
     let isFirst = true
     for i: Size in 0..arr.length {
       if isFirst {
         isFirst = false
       } else {
-        result.append(",")
+        result += ","
       }
-      result.append(stringify(arr.get(i)))
+      result += stringify(arr[i])
     }
-    result.append("]")
+    result += "]"
   } else if json instanceof jason.Object {
-    result.append("{")
+    result += "{"
     let obj = json as ref jason.Object
     let keys = obj.getKeys()
     let isFirst = true
@@ -31,30 +31,30 @@ export function stringify(item: ptr jason.Jason): String {
       if isFirst {
         isFirst = false
       } else {
-        result.append(",")
+        result += ","
       }
-      let key = keys.get(i)
-      result.append("\"")
-      result.append(escapeString(key))
-      result.append("\"")
-      result.append(":")
-      result.append(stringify(obj.get(key)))
+      let key = keys[i]
+      result += "\""
+      result += escapeString(key)
+      result += "\""
+      result += ":"
+      result += stringify(obj[key])
     }
-    result.append("}")
+    result += "}"
   } else if json instanceof jason.String {
     let str = json as ref jason.String
-    result.append("\"")
-    result.append(escapeString(str))
-    result.append("\"")
+    result += "\""
+    result += escapeString(str)
+    result += "\""
   } else if json instanceof jason.Number {
     let num = json as ref jason.Number
-    result.append(floatingPointToString<double>(num.value))
+    result += floatingPointToString<double>(num.value)
   } else if json instanceof jason.Boolean {
     let bool = json as ref jason.Boolean
     if bool.value {
-      result.append("true")
+      result += "true"
     } else {
-      result.append("false")
+      result += "false"
     }
   }
   return result
