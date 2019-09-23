@@ -56,7 +56,7 @@ function expectString(string: ref String, idx: ref int): String {
 function expectKeyword(keyword: String, string: ref String, idx: ref int): bool {
   let cache: int = idx
   for i: Size in 0..keyword.length {
-    if !expect(new String(&keyword[i], 1), string, idx) {
+    if !expect(keyword[i], string, idx) {
       idx = cache
       return false
     }
