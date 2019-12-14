@@ -1,75 +1,70 @@
 import String as AltaString from "string"
 import Vector from "vector"
 import Size from "types"
+import Map from "map"
+import "./util.alta" as util
+import floatingPointToString from "util"
 
-export class Jason {}
-
-export class String extends Jason, AltaString {}
-
-export class Array extends Jason, Vector<ptr Jason> {}
-
-export class Object extends Jason {
-  private var keys: Vector<AltaString> = new Vector<AltaString>
-  private var values: Vector<ptr Jason> = new Vector<ptr Jason>
-
-  public constructor() {
-    super()
+export class Jason {
+  public @virtual function toString(): AltaString {
+    return new AltaString
   }
-  public constructor(keys: Vector<AltaString>, values: Vector<ptr Jason>) {
-    super()
-    this.keys = keys
-    this.values = values
+  public to AltaString {
+    return this.toString()
   }
+}
 
-  # Gets a reference to the value associated with the given key
-  # @returns a reference to the value
-  public function get(key: AltaString): ref ptr Jason {
-    for i: Size in 0..this.keys.length {
-      let other = this.keys.get(i)
-      let j: Size = 0
-      let ok = other.length == key.length
-      while ok && j < key.length {
-        if other.charAt(j) != key.charAt(j) {
-          ok = false
-        }
-        ++j
+export class String extends Jason, AltaString {
+  public @override function toString(): AltaString {
+    return '"' + util.escapeString(super<AltaString>) + '"'
+  }
+  # note that for this class, the `to AltaString` operator
+  # does nothing. Alta will first try to upcast to the desired
+  # type, which in this case IS possible, causing the contents of
+  # the string to be returned, rather than an escaped representation
+  # of it. this is why the `toString` method is public (otherwise it
+  # would just be protected)
+  #
+  # code that wants a proper, stringified JSON representation of all
+  # Jason objects, regardless of whether they're Strings or anything else,
+  # should use the `toString` method
+}
+
+export class Array extends Jason, Vector<ptr Jason> {
+  public @override function toString(): AltaString {
+    let result: AltaString = "["
+    let isFirst = true
+    for i: Size in 0..this.length {
+      if isFirst {
+        isFirst = false
+      } else {
+        result += ','
       }
-      if ok {
-        return this.values.get(i)
-      }
+      result += this[i].toString()
     }
-
-    this.keys.push(key)
-    return this.values.push()
+    result += ']'
+    return result
   }
+}
 
-  # Checks whether a given key exists in this Map
-  # @returns `true` if the key is present, `false` otherwise
-  public function has(key: AltaString): bool {
+export class Object extends Jason, Map<AltaString, ptr Jason> {
+  public @override function toString(): AltaString {
+    let result: AltaString = "{"
+    let isFirst = true
     for i: Size in 0..this.keys.length {
-      let other = this.keys.get(i)
-      let j: Size = 0
-      let ok = other.length == key.length
-      while ok && j < key.length {
-        if other.charAt(j) != key.charAt(j) {
-          ok = false
-        }
-        ++j
+      if isFirst {
+        isFirst = false
+      } else {
+        result += ','
       }
-      if ok {
-        return true
-      }
+      let key = this.keys[i]
+      result += '"'
+      result += util.escapeString(key)
+      result += "\":"
+      result += this[key].toString()
     }
-
-    return false
-  }
-
-  public function getKeys(): Vector<AltaString> {
-    return this.keys
-  }
-
-  public this[AltaString]: ref ptr Jason {
-    return this.get($)
+    result += '}'
+    return result
   }
 }
 
@@ -87,6 +82,10 @@ export class Number extends Jason {
   public to double {
     return this.value
   }
+
+  public @override function toString(): AltaString {
+    return floatingPointToString<double>(this.value)
+  }
 }
 
 export class Boolean extends Jason {
@@ -103,6 +102,18 @@ export class Boolean extends Jason {
   public to bool {
     return this.value
   }
+
+  public @override function toString(): AltaString {
+    if this.value {
+      return "true"
+    } else {
+      return "false"
+    }
+  }
 }
 
-export class Null extends Jason {}
+export class Null extends Jason {
+  public @override function toString(): AltaString {
+    return "null"
+  }
+}

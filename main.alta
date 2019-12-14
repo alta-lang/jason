@@ -1,3 +1,2 @@
 export parse from "lib/parser.alta"
-export stringify from "lib/stringifier.alta"
 export * from "lib/classes.alta"

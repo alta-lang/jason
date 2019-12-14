@@ -1,4 +1,4 @@
-import parse, stringify from "../main.alta"
+import parse from "../main.alta"
 import String from "string"
 import Size, rawstring from "types"
 import printLine, File, printError from "io"
@@ -26,7 +26,7 @@ literal function main(argc: int, argv: ptr rawstring): int {
   let result = parse(input)
   printLine("parsed!")
 
-  printLine(stringify(result))
+  printLine(result.toString())
 
   return 0
 }
