@@ -1,5 +1,4 @@
 import "classes.alta" as jason
-import malloc, free from "memory"
 import Size, rawstring from "types"
 import String, rawstringLength from "string"
 import Stack from "stack"
@@ -177,7 +176,7 @@ export function parse(string: String): ptr jason.Jason {
         if lastOk {
           ok = true
           let obj = result as ptr jason.Object
-          (*obj)[stack.top.stringCache] = lastResult
+          ;(*obj)[stack.top.stringCache] = lastResult
 
           if expect(",", string, idx) {
             state = 1
