@@ -1,0 +1,26 @@
+variables:
+  Alta.Version: 7acb290
+
+strategy:
+  matrix:
+    Linux:
+      CI.ImageName: ubuntu-latest
+    macOS:
+      CI.ImageName: macOS-latest
+    Windows:
+      CI.ImageName: windows-latest
+
+pool:
+  vmImage: $(CI.ImageName)
+
+steps:
+- checkout: self
+  submodules: true
+- pwsh: |
+    . ./deps/helpers/Get-AltaCompiler.ps1
+    $AltaReleaseBin = Get-AltaCompiler -Version $(Alta.Version) -DestinationDirectory "tmp/altac/$(Alta.Version)"
+    echo "##vso[task.setvariable variable=Alta.Compiler.Path]$AltaReleaseBin"
+  displayName: "Get the Alta compiler (version $(Alta.Version))"
+- pwsh: |
+    & "$(Alta.Compiler.Path)" -c -v
+  displayName: "Compile the library and test executable"
