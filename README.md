@@ -5,10 +5,18 @@
 
 A simple little [JSON](https://www.json.org/) parser and stringifier implemented purely in Alta.
 
-# Building the tests
+## Building the tests
 Make sure you have the [Alta Compiler](https://github.com/alta-lang/alta) installed, and run this in a terminal in the project directory:
 ```alta
-altac -c .
+altac -c
 ```
-The simple parse-and-stringify binary will be located in `alta-build/_build/bin/jason`.
+The simple parse-and-stringify binary will be located in `alta-build/_build/jason/jason/jason-jason`.
 Run it with the path to a JSON file and it will parse it and then print the stringified result.
+
+## Build Status
+
+| Platform | Status |
+| -------- | ------ |
+| Windows  | [![Build Status](https://dev.azure.com/facekapow/alta/_apis/build/status/alta-lang.jason?branchName=master&jobName=Job&configuration=Job%20Windows)](https://dev.azure.com/facekapow/alta/_build/latest?definitionId=11&branchName=master) |
+| Linux    | [![Build Status](https://dev.azure.com/facekapow/alta/_apis/build/status/alta-lang.jason?branchName=master&jobName=Job&configuration=Job%20Linux)](https://dev.azure.com/facekapow/alta/_build/latest?definitionId=11&branchName=master) |
+| macOS    | [![Build Status](https://dev.azure.com/facekapow/alta/_apis/build/status/alta-lang.jason?branchName=master&jobName=Job&configuration=Job%20macOS)](https://dev.azure.com/facekapow/alta/_build/latest?definitionId=11&branchName=master) |
