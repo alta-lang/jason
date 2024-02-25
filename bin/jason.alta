@@ -9,14 +9,14 @@ literal function main(argc: int, argv: ptr rawstring): int {
 
   if argc > 1 {
     let filename = argv[1]
-    let file = new File(filename, "r")
-    if !file {
-      printError("failed to open input file (", filename, ')')
+    let maybeFile = File.tryOpen(filename)
+    if maybeFile.isError {
+      printError("failed to open input file (", filename, "): ", maybeFile.error)
       return 1
     }
+    let file = maybeFile.value
 
-    let char: byte? = null
-    while (char = file.read?()) {
+    while let char = file.read() {
       input += *char
     }
   } else {

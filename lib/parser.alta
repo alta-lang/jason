@@ -6,9 +6,21 @@ import Pair, parseFloatingPoint from "util"
 import isspace from "libc/lib/ctype"
 import unescapeString from "util.alta"
 
+enum Rule: int {
+  Invalid = -1,
+  Root = 0,
+  Object = 1,
+  Array = 2,
+  Any = 3,
+  String = 4,
+  Number = 5,
+  Boolean = 6,
+  Null = 7,
+}
+
 function expect(seq: String, string: ref String, idx: ref int): bool {
   let cache: int = idx
-  while idx < string.length && isspace(string[idx]) {
+  while idx < string.length && isspace(string[idx]) != 0 {
     ++idx
   }
   if idx >= string.length {
@@ -89,13 +101,20 @@ function expectNumber(string: ref String, idx: ref int, found: ref bool): double
     return 0.0
   }
 
+  let maybeNum = parseFloatingPoint<double>(numberPart)
+  if maybeNum.isError {
+    idx = cache
+    found = false
+    return 0.0
+  }
+
   found = true
-  return parseFloatingPoint<double>(numberPart)
+  return maybeNum.value
 }
 
 class StackElement {
   public var index: int = 0
-  public var rule: int = 0
+  public var rule: Rule = Rule.Root
   public var state: int = 0
   public var ok: bool = true
   public var result: ptr jason.Jason = 0 as ptr jason.Jason
@@ -104,12 +123,12 @@ class StackElement {
   public var stringCache: String
 
   public constructor() {}
-  public constructor(index: int, rule: int, result: ptr jason.Jason) {
+  public constructor(index: int, rule: Rule, result: ptr jason.Jason) {
     this.index = index
     this.rule = rule
     this.result = result
   }
-  public constructor(index: int, rule: int) {
+  public constructor(index: int, rule: Rule) {
     this.index = index
     this.rule = rule
   }
@@ -118,7 +137,7 @@ class StackElement {
 export function parse(string: String): ptr jason.Jason {
   let finalResult = &(new* jason.Null as ref jason.Jason)
   let stack = new Stack<StackElement>
-  stack.push(new StackElement(0, 0, finalResult))
+  stack.push(new StackElement(0, Rule.Root, finalResult))
 
   while stack.length > 0 {
     let len = stack.length
@@ -132,17 +151,17 @@ export function parse(string: String): ptr jason.Jason {
     let lastOk: bool = stack.top.lastOk
     let cache: int = idx
 
-    if rule == 0 {
+    if rule == Rule.Root {
       if state == 0 {
         state = 1
-        stack.push(new StackElement(idx, 1))
+        stack.push(new StackElement(idx, Rule.Object))
       } else if state == 1 {
         if lastOk {
           ok = true
           result = lastResult
         } else {
           state = 2
-          stack.push(new StackElement(idx, 2))
+          stack.push(new StackElement(idx, Rule.Array))
         }
       } else {
         if lastOk {
@@ -152,12 +171,12 @@ export function parse(string: String): ptr jason.Jason {
           ok = false
         }
       }
-    } else if rule == 1 {
+    } else if rule == Rule.Object {
       if state == 0 {
         if expect("{", string, idx) {
           state = 1
           result = &(new* jason.Object as ref jason.Jason)
-          stack.push(new StackElement(idx, -1))
+          stack.push(new StackElement(idx, Rule.Invalid))
         } else {
           ok = false
         }
@@ -170,7 +189,7 @@ export function parse(string: String): ptr jason.Jason {
         } else {
           stack.top.stringCache = unescapeString(key.substring(1, length: key.length - 2))
           state = 2
-          stack.push(new StackElement(idx, 3))
+          stack.push(new StackElement(idx, Rule.Any))
         }
       } else if state == 2 {
         if lastOk {
@@ -186,7 +205,7 @@ export function parse(string: String): ptr jason.Jason {
         } else {
           state = 3
         }
-        stack.push(new StackElement(idx, -1))
+        stack.push(new StackElement(idx, Rule.Invalid))
       } else if state == 3 {
         if !expect("}", string, idx) {
           ok = false
@@ -194,13 +213,13 @@ export function parse(string: String): ptr jason.Jason {
           ok = true
         }
       }
-    } else if rule == -1 {
+    } else if rule == Rule.Invalid {
       ok = false
-    } else if rule == 3 {
+    } else if rule == Rule.Any {
       if state == 0 {
         state = 1
         # object
-        stack.push(new StackElement(idx, 1))
+        stack.push(new StackElement(idx, Rule.Object))
       } else if state == 1 {
         if lastOk {
           ok = true
@@ -208,7 +227,7 @@ export function parse(string: String): ptr jason.Jason {
         } else {
           state = 2
           # array
-          stack.push(new StackElement(idx, 2))
+          stack.push(new StackElement(idx, Rule.Array))
         }
       } else if state == 2 {
         if lastOk {
@@ -217,7 +236,7 @@ export function parse(string: String): ptr jason.Jason {
         } else {
           state = 3
           # string
-          stack.push(new StackElement(idx, 4))
+          stack.push(new StackElement(idx, Rule.String))
         }
       } else if state == 3 {
         if lastOk {
@@ -226,7 +245,7 @@ export function parse(string: String): ptr jason.Jason {
         } else {
           state = 4
           # number
-          stack.push(new StackElement(idx, 5))
+          stack.push(new StackElement(idx, Rule.Number))
         }
       } else if state == 4 {
         if lastOk {
@@ -235,7 +254,7 @@ export function parse(string: String): ptr jason.Jason {
         } else {
           state = 5
           # boolean
-          stack.push(new StackElement(idx, 6))
+          stack.push(new StackElement(idx, Rule.Boolean))
         }
       } else if state == 5 {
         if lastOk {
@@ -244,7 +263,7 @@ export function parse(string: String): ptr jason.Jason {
         } else {
           state = 6
           # null
-          stack.push(new StackElement(idx, 7))
+          stack.push(new StackElement(idx, Rule.Null))
         }
       } else if state == 6 {
         if lastOk {
@@ -254,17 +273,17 @@ export function parse(string: String): ptr jason.Jason {
           ok = false
         }
       }
-    } else if rule == 4 {
+    } else if rule == Rule.String {
       let str = expectString(string, idx)
       if str.length == 0 {
         ok = false
       } else {
         ok = true
-        let string = new* jason.String
+        let string = &(new* jason.String)
         string.append(unescapeString(str.substring(1, length: str.length - 2)))
-        result = &(string as ref jason.Jason)
+        result = string as ptr jason.Jason
       }
-    } else if rule == 5 {
+    } else if rule == Rule.Number {
       let found = false
       let num = expectNumber(string, idx, found)
       if found {
@@ -273,7 +292,7 @@ export function parse(string: String): ptr jason.Jason {
       } else {
         ok = false
       }
-    } else if rule == 6 {
+    } else if rule == Rule.Boolean {
       let val = false
       if expectKeyword("true", string, idx) {
         ok = true
@@ -287,19 +306,19 @@ export function parse(string: String): ptr jason.Jason {
       if ok {
         result = &(new* jason.Boolean(val) as ref jason.Jason)
       }
-    } else if rule == 7 {
+    } else if rule == Rule.Null {
       if expectKeyword("null", string, idx) {
         ok = true
         result = &(new* jason.Null as ref jason.Jason)
       } else {
         ok = false
       }
-    } else if rule == 2 {
+    } else if rule == Rule.Array {
       if state == 0 {
         if expect("[", string, idx) {
           state = 1
           result = &(new* jason.Array as ref jason.Jason)
-          stack.push(new StackElement(idx, 3))
+          stack.push(new StackElement(idx, Rule.Any))
         } else {
           ok = false
         }
@@ -310,17 +329,17 @@ export function parse(string: String): ptr jason.Jason {
           arr.push(lastResult)
 
           if expect(",", string, idx) {
-            stack.push(new StackElement(idx, 3))
+            stack.push(new StackElement(idx, Rule.Any))
           } else {
             state = 2
-            stack.push(new StackElement(idx, -1))
+            stack.push(new StackElement(idx, Rule.Invalid))
           }
         } else {
           if arr.length > 0 {
             ok = false
           } else {
             state = 2
-            stack.push(new StackElement(idx, -1))
+            stack.push(new StackElement(idx, Rule.Invalid))
           }
         }
       } else if state == 2 {
