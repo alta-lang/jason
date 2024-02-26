@@ -135,7 +135,7 @@ class StackElement {
 }
 
 export function parse(string: String): ptr jason.Jason {
-  let finalResult = &(new* jason.Null as ref jason.Jason)
+  let finalResult = new* jason.Null as ptr jason.Jason
   let stack = new Stack<StackElement>
   stack.push(new StackElement(0, Rule.Root, finalResult))
 
@@ -175,7 +175,7 @@ export function parse(string: String): ptr jason.Jason {
       if state == 0 {
         if expect("{", string, idx) {
           state = 1
-          result = &(new* jason.Object as ref jason.Jason)
+          result = new* jason.Object as ptr jason.Jason
           stack.push(new StackElement(idx, Rule.Invalid))
         } else {
           ok = false
@@ -279,7 +279,7 @@ export function parse(string: String): ptr jason.Jason {
         ok = false
       } else {
         ok = true
-        let string = &(new* jason.String)
+        let string = new* jason.String
         string.append(unescapeString(str.substring(1, length: str.length - 2)))
         result = string as ptr jason.Jason
       }
@@ -288,7 +288,7 @@ export function parse(string: String): ptr jason.Jason {
       let num = expectNumber(string, idx, found)
       if found {
         ok = true
-        result = &(new* jason.Number(num) as ref jason.Jason)
+        result = new* jason.Number(num) as ptr jason.Jason
       } else {
         ok = false
       }
@@ -304,12 +304,12 @@ export function parse(string: String): ptr jason.Jason {
         ok = false
       }
       if ok {
-        result = &(new* jason.Boolean(val) as ref jason.Jason)
+        result = new* jason.Boolean(val) as ptr jason.Jason
       }
     } else if rule == Rule.Null {
       if expectKeyword("null", string, idx) {
         ok = true
-        result = &(new* jason.Null as ref jason.Jason)
+        result = new* jason.Null as ptr jason.Jason
       } else {
         ok = false
       }
@@ -317,7 +317,7 @@ export function parse(string: String): ptr jason.Jason {
       if state == 0 {
         if expect("[", string, idx) {
           state = 1
-          result = &(new* jason.Array as ref jason.Jason)
+          result = new* jason.Array as ptr jason.Jason
           stack.push(new StackElement(idx, Rule.Any))
         } else {
           ok = false
