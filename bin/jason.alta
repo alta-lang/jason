@@ -8,7 +8,7 @@ literal function main(argc: int, argv: ptr rawstring): int {
   let input = new String
 
   if argc > 1 {
-    let filename = argv[1]
+    let filename: ref rawstring = argv[1]
     let maybeFile = File.tryOpen(filename)
     if maybeFile.isError {
       printError("failed to open input file (", filename, "): ", maybeFile.error)

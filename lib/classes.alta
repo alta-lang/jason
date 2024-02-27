@@ -57,7 +57,7 @@ export class Object extends Jason, Map<AltaString, ptr Jason> {
       } else {
         result += ','
       }
-      let key = this.keys[i]
+      let key: AltaString = this.keys[i]
       result += '"'
       result += util.escapeString(key)
       result += "\":"
